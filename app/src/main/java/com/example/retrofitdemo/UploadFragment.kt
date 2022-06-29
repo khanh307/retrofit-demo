@@ -2,23 +2,34 @@ package com.example.retrofitdemo
 
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.database.Cursor
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.fragment.app.Fragment
+import com.example.retrofitdemo.Retrofit.APIUtils
+import com.example.retrofitdemo.Retrofit.DataClient
 import kotlinx.android.synthetic.main.fragment_upload.*
-import java.net.URI
+import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.Call
+import retrofit2.Response
+import java.io.File
 
 
 class UploadFragment : Fragment() {
 
     val REQUEST_CODE_IMAGE = 123;
+    var realpath: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,12 +46,35 @@ class UploadFragment : Fragment() {
             startActivityForResult(intent, REQUEST_CODE_IMAGE)
         }
 
+        up.setOnClickListener {
+            var file: File = File(realpath)
+            var filepath: String = file.absolutePath
+            var mangtenFile: List<String> = filepath.split("\\.")
+            filepath = mangtenFile.get(0) + System.currentTimeMillis()+"."+ mangtenFile.get(1)
+            var requestBody: RequestBody= RequestBody.create(MediaType.parse("multipart/form-data"), file)
+            var body: MultipartBody.Part = MultipartBody.Part.createFormData("upload", filepath, requestBody)
+            var dataClient: DataClient = APIUtils.getData()
+            var callBack: retrofit2.Call<String> = dataClient.uploadImage(body)
+            callBack.enqueue(object: retrofit2.Callback<String> {
+                override fun onResponse(call: Call<String>, response: Response<String>) {
+
+                }
+
+                override fun onFailure(call: Call<String>, t: Throwable) {
+
+                }
+
+            })
+        }
+
         return view
     }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if(requestCode == REQUEST_CODE_IMAGE && resultCode == RESULT_OK && data != null){
             var uri: Uri? = data.data
+            realpath = getRealPathFromURI(uri)!!
             var inputStream = context?.contentResolver?.openInputStream(uri!!)
             var bitmap = BitmapFactory.decodeStream(inputStream)
             imagepicked.setImageBitmap(bitmap)
@@ -48,4 +82,18 @@ class UploadFragment : Fragment() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
+    fun getRealPathFromURI(contentUri: Uri?): String? {
+        var path: String? = null
+        val proj = arrayOf(MediaStore.MediaColumns.DATA)
+        val cursor: Cursor? = context?.contentResolver?.query(contentUri!!, proj, null, null, null)
+        if (cursor!!.moveToFirst()) {
+            val column_index: Int = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+            path = cursor.getString(column_index)
+        }
+        cursor.close()
+        return path
+    }
+
 }
+
+
