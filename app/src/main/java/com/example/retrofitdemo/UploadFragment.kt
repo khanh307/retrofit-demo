@@ -7,24 +7,25 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.example.retrofitdemo.Retrofit.APIUtils
 import com.example.retrofitdemo.Retrofit.DataClient
 import kotlinx.android.synthetic.main.fragment_upload.*
-import okhttp3.Callback
+
 import okhttp3.MediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Call
 import retrofit2.Response
 import java.io.File
-
 
 class UploadFragment : Fragment() {
 
@@ -50,21 +51,51 @@ class UploadFragment : Fragment() {
             var file: File = File(realpath)
             var filepath: String = file.absolutePath
             var mangtenFile: List<String> = filepath.split("\\.")
-            filepath = mangtenFile.get(0) + System.currentTimeMillis()+"."+ mangtenFile.get(1)
-            var requestBody: RequestBody= RequestBody.create(MediaType.parse("multipart/form-data"), file)
-            var body: MultipartBody.Part = MultipartBody.Part.createFormData("upload", filepath, requestBody)
-            var dataClient: DataClient = APIUtils.getData()
-            var callBack: retrofit2.Call<String> = dataClient.uploadImage(body)
-            callBack.enqueue(object: retrofit2.Callback<String> {
-                override fun onResponse(call: Call<String>, response: Response<String>) {
+            //filepath = mangtenFile.get(0) + System.currentTimeMillis()+"."+ mangtenFile.get(1)
+            if(name.text.length > 0 ){
+                var requestBody: RequestBody= RequestBody.create(MediaType.parse("multipart/form-data"), file)
+                var body: MultipartBody.Part = MultipartBody.Part.createFormData("upload", filepath, requestBody)
+                var dataClient: DataClient = APIUtils.getData()
+                var callBack: retrofit2.Call<String> = dataClient.uploadImage(body)
+                callBack.enqueue(object: retrofit2.Callback<String> {
+                    override fun onResponse(call: Call<String>, response: Response<String>) {
+                        Log.d("BBB", "Go")
+                        if(response.isSuccessful){
+                            var message: String = response.body().toString()
+                            Log.d("BBB", message)
+                            if(message.length > 0){
+                               var insertdata: DataClient = APIUtils.getData()
+                                var callback: retrofit2.Call<String> = insertdata.insertData(name.text.toString(), APIUtils.Base_Url+"images/"+message)
+                                callback.enqueue(object: retrofit2.Callback<String>{
+                                    override fun onResponse(
+                                        call: Call<String>,
+                                        response: Response<String>
+                                    ) {
+                                        if((response.body().toString()).equals("Success")){
+                                            Toast.makeText(context, "Thành công", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
 
-                }
+                                    override fun onFailure(call: Call<String>, t: Throwable) {
 
-                override fun onFailure(call: Call<String>, t: Throwable) {
+                                    }
 
-                }
+                                })
 
-            })
+                            }
+                        } else {
+                            Log.d("BBB", "Response null")
+                            Toast.makeText(context, "Response null", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<String>, t: Throwable) {
+                        Log.d("CCC", t.message.toString())
+                    }
+
+                })
+            }
+
         }
 
         return view
@@ -95,5 +126,6 @@ class UploadFragment : Fragment() {
     }
 
 }
+
 
 
